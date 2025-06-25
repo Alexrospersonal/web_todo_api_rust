@@ -1,0 +1,11 @@
+[package]
+name = "todo_web_api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.4"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.8", features = [ "runtime-tokio" ] }
+sqlite = "0.37.0"
