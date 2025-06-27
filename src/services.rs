@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use sqlx::{
-    SqlitePool,
+    Sqlite, SqlitePool,
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
 };
 
@@ -29,15 +29,27 @@ impl Database {
     }
 }
 
-pub async fn retrieve_todos_from_db_as_json(pool: &SqlitePool) -> Option<Vec<Todo>> {
+// TODO: add limit with option in parameters
+pub async fn retrieve_todos_from_db(pool: &SqlitePool) -> Option<Vec<Todo>> {
     let todos = sqlx::query_as::<_, Todo>("SELECT * FROM TODOS")
         .fetch_all(pool)
         .await
         .unwrap();
-    
-    if todos.is_empty() {
-        None
-    } else {
-        Some(todos)
+    // TODO: add error validation
+    if todos.is_empty() { None } else { Some(todos) }
+}
+
+pub async fn retrieve_todo_from_db_as_json(pool: &SqlitePool, id: u32) -> Option<Todo> {
+    let todo = sqlx::query_as::<_, Todo>("SELECT * FROM TODOS WHERE id=?")
+        .bind(id)
+        .fetch_one(pool)
+        .await;
+
+    match todo {
+        Ok(todo) => Some(todo),
+        // TODO: add error validation
+        Err(_) => None,
     }
 }
+
+

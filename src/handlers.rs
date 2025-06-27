@@ -2,17 +2,17 @@ use std::sync::Arc;
 
 use axum::{extract::Path, Extension, Json};
 
-use crate::{models::Todo, services::{retrieve_todos_from_db_as_json, Database}};
+use crate::{models::Todo, services::{retrieve_todo_from_db_as_json, retrieve_todos_from_db, Database}};
 
 pub async fn retrieve_todos(Extension(db): Extension<Arc<Database>>) -> Json<Vec<Todo>>{
-    match retrieve_todos_from_db_as_json(&db.pool).await {
+    match retrieve_todos_from_db(&db.pool).await {
         Some(todos) => Json(todos),
         None => Json(Vec::new()),
     }
 }
 
-pub async fn retrieve_todo(Path(todo_id): Path<u32>) -> String {
-    format!("You get todo with id:{todo_id}")
+pub async fn retrieve_todo(Path(todo_id): Path<u32>, Extension(db): Extension<Arc<Database>>) -> Json<Option<Todo>> {
+    Json(retrieve_todo_from_db_as_json(&db.pool, todo_id).await)
 }
 
 pub async fn create_todo(Json(todo): Json<Todo>) -> String {
