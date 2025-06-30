@@ -1,11 +1,11 @@
 use std::str::FromStr;
 
 use sqlx::{
-    Sqlite, SqlitePool,
-    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
+    QueryBuilder, Sqlite, SqlitePool,
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqliteQueryResult},
 };
 
-use crate::models::Todo;
+use crate::models::{Todo, UpdateTodo};
 
 pub struct Database {
     pub pool: SqlitePool,
@@ -39,7 +39,7 @@ pub async fn retrieve_todos_from_db(pool: &SqlitePool) -> Option<Vec<Todo>> {
     if todos.is_empty() { None } else { Some(todos) }
 }
 
-pub async fn retrieve_todo_from_db_as_json(pool: &SqlitePool, id: u32) -> Option<Todo> {
+pub async fn retrieve_todo_from_db(pool: &SqlitePool, id: u32) -> Option<Todo> {
     let todo = sqlx::query_as::<_, Todo>("SELECT * FROM TODOS WHERE id=?")
         .bind(id)
         .fetch_one(pool)
@@ -52,4 +52,69 @@ pub async fn retrieve_todo_from_db_as_json(pool: &SqlitePool, id: u32) -> Option
     }
 }
 
+pub async fn create_one_todo(pool: &SqlitePool, todo: &Todo) -> i64 {
+    let row = sqlx::query!("SELECT COUNT(*) as count FROM TODOS;")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let next_id = row.count + 1;
 
+    let result: SqliteQueryResult =
+        sqlx::query("INSERT INTO TODOS (ID, HEADER, BODY) VALUES (?, ?, ?);")
+            .bind(next_id)
+            .bind(&todo.HEADER)
+            .bind(&todo.BODY)
+            .execute(pool)
+            .await
+            .unwrap();
+
+    if result.rows_affected() > 0 {
+        next_id
+    } else {
+        -1
+    }
+}
+
+pub async fn delete_one_todo(pool: &SqlitePool, id: i64) -> bool {
+    let delete_result = sqlx::query("DELETE FROM TODOS WHERE ID = ?")
+        .bind(id)
+        .execute(pool)
+        .await
+        .unwrap();
+
+    if delete_result.rows_affected() > 0 {
+        true
+    } else {
+        false
+    }
+}
+
+pub async fn update_one_todo(pool: &SqlitePool, todo: &UpdateTodo, id: i64) -> bool {
+    let mut query_builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("UPDATE TODOS SET ");
+
+    if todo.HEADER.is_none() && todo.BODY.is_none() {
+        return false;
+    }
+
+    if let Some(header) = &todo.HEADER {
+        query_builder
+            .push("HEADER = ")
+            .push_bind(header)
+            .push(", ");
+    }
+
+    if let Some(body) = &todo.BODY {
+        query_builder.push("BODY = ").push_bind(body).push(" ");
+    }
+
+    query_builder.push("WHERE ID = ").push_bind(id).push(" ;");
+    let query = query_builder.build();
+
+    let updated_result = query.execute(pool).await.unwrap();
+
+    if updated_result.rows_affected() > 0 {
+        true
+    } else {
+        false
+    }
+}

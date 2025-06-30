@@ -1,7 +1,8 @@
 use std::{error::Error, str::FromStr, sync::Arc};
 
 use axum::{
-    routing::{delete, get, post, put}, Extension, Router
+    Extension, Router,
+    routing::{delete, get, post, put},
 };
 use handlers::{create_todo, delete_todo, retrieve_todo, retrieve_todos, update_todo};
 use services::Database;
@@ -12,7 +13,8 @@ mod services;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    
+    dotenv::dotenv().ok();
+
     let state = Arc::new(Database::new().await?);
 
     let app = Router::new()
